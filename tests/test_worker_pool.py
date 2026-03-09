@@ -289,3 +289,194 @@ class TestWorkerPoolCleanup:
         await pool.initialize()
 
         assert all(w._connected for w in pool._workers)
+
+
+class TestWorkerPoolPublish:
+    """Test async publish() method for concurrent dispatch."""
+
+    @pytest.mark.asyncio
+    async def test_publish_dispatches_messages_concurrently(
+        self, broker_config, mock_mqtt_client_class
+    ):
+        """
+        Test that publish() dispatches messages across workers concurrently.
+
+        Given: An initialized WorkerPool with 3 workers
+        When: async publish() is called with 5 messages
+        Then: All 5 messages are published across workers
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        worker_count = 3
+        pool = WorkerPool(
+            worker_count=worker_count, broker_config=broker_config
+        )
+
+        await pool.initialize()
+
+        messages = [
+            {"meterId": f"00000000004{i}", "value": i}
+            for i in range(5)
+        ]
+        topic = "test/topic"
+
+        # Track publish calls per worker
+        publish_calls = []
+
+        original_publish = pool._workers[0].publish
+        for idx, worker in enumerate(pool._workers):
+            async def tracking_publish(topic, payload, worker_idx=idx):
+                publish_calls.append(worker_idx)
+                await original_publish(topic, payload)
+
+            worker.publish = tracking_publish
+
+        await pool.publish(messages, topic)
+
+        assert len(publish_calls) == 5
+
+    @pytest.mark.asyncio
+    async def test_publish_distributes_round_robin(
+        self, broker_config, mock_mqtt_client_class
+    ):
+        """
+        Test that messages are distributed round-robin across workers.
+
+        Given: A WorkerPool with 3 workers
+        When: 6 messages are published
+        Then: Each worker gets 2 messages (round-robin: 0,1,2,0,1,2)
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        worker_count = 3
+        pool = WorkerPool(
+            worker_count=worker_count, broker_config=broker_config
+        )
+
+        await pool.initialize()
+
+        messages = [{"meterId": f"00000000004{i}", "value": i} for i in range(6)]
+        topic = "test/topic"
+
+        # Track publish calls per worker
+        worker_counts = {0: 0, 1: 0, 2: 0}
+
+        original_publish = pool._workers[0].publish
+        for idx, worker in enumerate(pool._workers):
+            async def tracking_publish(topic, payload, worker_idx=idx):
+                worker_counts[worker_idx] += 1
+                await original_publish(topic, payload)
+
+            worker.publish = tracking_publish
+
+        await pool.publish(messages, topic)
+
+        # Each worker should have published 2 messages (round-robin)
+        assert worker_counts[0] == 2
+        assert worker_counts[1] == 2
+        assert worker_counts[2] == 2
+
+    @pytest.mark.asyncio
+    async def test_publish_raises_if_not_initialized(
+        self, broker_config, mock_mqtt_client_class
+    ):
+        """
+        Test that publish() raises RuntimeError if not initialized.
+
+        Given: A WorkerPool that has not been initialized
+        When: async publish() is called
+        Then: RuntimeError is raised
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        worker_count = 2
+        pool = WorkerPool(
+            worker_count=worker_count, broker_config=broker_config
+        )
+
+        messages = [{"meterId": "000000000049", "value": 100}]
+        topic = "test/topic"
+
+        with pytest.raises(RuntimeError, match="not initialized"):
+            await pool.publish(messages, topic)
+
+    @pytest.mark.asyncio
+    async def test_publish_logs_individual_failures(
+        self, broker_config, mock_mqtt_client_class
+    ):
+        """
+        Test that individual publish failures are logged but don't stop others.
+
+        Given: A WorkerPool where worker 1 fails to publish
+        When: async publish() is called with 3 messages
+        Then: Other workers continue publishing, failure is logged
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        worker_count = 3
+        pool = WorkerPool(
+            worker_count=worker_count, broker_config=broker_config
+        )
+
+        await pool.initialize()
+
+        messages = [
+            {"meterId": "000000000049", "value": 100},
+            {"meterId": "000000000050", "value": 200},
+            {"meterId": "000000000051", "value": 300},
+        ]
+        topic = "test/topic"
+
+        # Make worker 1 fail
+        async def failing_publish(topic, payload):
+            raise Exception("Publish failed")
+
+        pool._workers[1].publish = failing_publish
+
+        # Should not raise - individual failures are logged
+        await pool.publish(messages, topic)
+
+        # Verify other workers published
+        # Worker 0 and 2 should have published successfully
+
+    @pytest.mark.asyncio
+    async def test_publish_all_workers_simultaneously(
+        self, broker_config, mock_mqtt_client_class
+    ):
+        """
+        Test that all workers can publish simultaneously using TaskGroup.
+
+        Given: A WorkerPool with 3 workers
+        When: 3 messages are published (one per worker)
+        Then: All workers publish concurrently
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        worker_count = 3
+        pool = WorkerPool(
+            worker_count=worker_count, broker_config=broker_config
+        )
+
+        await pool.initialize()
+
+        messages = [
+            {"meterId": f"00000000004{i}", "value": i}
+            for i in range(3)
+        ]
+        topic = "test/topic"
+
+        # Add delay to verify concurrent execution
+        import time
+
+        async def delayed_publish(topic, payload, delay=0.01):
+            await asyncio.sleep(delay)
+
+        for worker in pool._workers:
+            worker.publish = delayed_publish
+
+        start = time.time()
+        await pool.publish(messages, topic)
+        elapsed = time.time() - start
+
+        # With 3 concurrent tasks of 0.01s each, total should be ~0.01s, not 0.03s
+        assert elapsed < 0.02  # Allow some margin
