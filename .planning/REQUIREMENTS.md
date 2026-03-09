@@ -16,8 +16,8 @@ Requirements for v1.0 Core milestone. Each maps to roadmap phases.
 
 ### Publishing
 
-- [ ] **PUB-01**: User can configure broker connection (host, port, TLS, auth)
-- [ ] **PUB-02**: User can select QoS level (0, 1, or 2)
+- [x] **PUB-01**: User can configure broker connection (host, port, TLS, auth)
+- [x] **PUB-02**: User can select QoS level (0, 1, or 2)
 - [ ] **PUB-03**: Tool can publish asynchronously with configurable worker count
 - [ ] **PUB-04**: Tool can rate-limit messages (msg/sec cap)
 - [ ] **PUB-05**: Tool can retry failed publishes with exponential backoff
@@ -80,8 +80,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INPUT-02 | Phase 1 | Complete |
 | INPUT-03 | Phase 1 | Complete |
 | INPUT-04 | Phase 1 | Complete |
-| PUB-01 | Phase 2 | Pending |
-| PUB-02 | Phase 2 | Pending |
+| PUB-01 | Phase 2 | Complete |
+| PUB-02 | Phase 2 | Complete |
 | PUB-03 | Phase 2 | Pending |
 | PUB-04 | Phase 2 | Pending |
 | PUB-05 | Phase 2 | Pending |

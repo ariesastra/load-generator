@@ -102,7 +102,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Input Foundation | 4/4 | Complete | 2026-03-09 |
-| 2. Publishing Engine | 0/6 | Planning | - |
+| 2. Publishing Engine | 2/6 | Executing | 2026-03-09 |
 | 3. Configuration & CLI | 0/4 | Not started | - |
 | 4. Metrics & Artifacts | 0/2 | Not started | - |
 
@@ -126,8 +126,8 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 | INPUT-02 | Phase 1 | Complete |
 | INPUT-03 | Phase 1 | Complete |
 | INPUT-04 | Phase 1 | Complete |
-| PUB-01 | Phase 2 | Pending |
-| PUB-02 | Phase 2 | Pending |
+| PUB-01 | Phase 2 | Complete |
+| PUB-02 | Phase 2 | Complete |
 | PUB-03 | Phase 2 | Pending |
 | PUB-04 | Phase 2 | Pending |
 | PUB-05 | Phase 2 | Pending |
@@ -143,4 +143,4 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 
 ---
 *Roadmap created: 2026-03-09*
-*Last updated: 2026-03-10 (Phase 2 planning complete)*
+*Last updated: 2026-03-09 (Plan 02-01 complete)*
