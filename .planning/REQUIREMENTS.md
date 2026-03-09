@@ -12,7 +12,7 @@ Requirements for v1.0 Core milestone. Each maps to roadmap phases.
 - [ ] **INPUT-01**: Tool can load meter IDs from CSV file with validation and deduplication
 - [ ] **INPUT-02**: Tool can generate LP periodic payloads with unique `trxId` per message
 - [ ] **INPUT-03**: Tool can generate unique `(meterId, samplingTime)` pairs per run
-- [ ] **INPUT-04**: Tool can assign valid 15-minute boundary timestamps via slot planner
+- [x] **INPUT-04**: Tool can assign valid 15-minute boundary timestamps via slot planner
 
 ### Publishing
 
@@ -79,7 +79,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INPUT-01 | Phase 1 | Pending |
 | INPUT-02 | Phase 1 | Pending |
 | INPUT-03 | Phase 1 | Pending |
-| INPUT-04 | Phase 1 | Pending |
+| INPUT-04 | Phase 1 | Complete |
 | PUB-01 | Phase 2 | Pending |
 | PUB-02 | Phase 2 | Pending |
 | PUB-03 | Phase 2 | Pending |
