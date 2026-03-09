@@ -29,11 +29,23 @@ class TestSlotPlannerInitialization:
 
     def test_base_time_defaults_to_current_utc_time(self):
         """Test that base_time defaults to current UTC time when None."""
-        planner = SlotPlanner(base_time=None)
         now = datetime.now(timezone.utc)
-        # Allow 1 second tolerance for test execution time
-        assert abs((planner.base_time - now).total_seconds()) < 1, \
-            f"Default base_time should be close to current time"
+        planner = SlotPlanner(base_time=None)
+
+        # Due to rounding to 15-minute boundaries, the difference can be up to 75 seconds
+        # (when now is at 12:31:14, it rounds to 12:30:00, difference is 1m14s)
+        # We verify the rounded time is within 0-15 minutes of now
+        time_diff = (now - planner.base_time).total_seconds()
+        assert 0 <= time_diff <= 900, \
+            f"Default base_time should be within 0-15 minutes of current time, got {time_diff}s"
+
+        # Verify it's on a 15-minute boundary
+        assert planner.base_time.minute % 15 == 0, \
+            f"Base time should be on 15-minute boundary, got minute={planner.base_time.minute}"
+        assert planner.base_time.second == 0, \
+            f"Base time should have zero seconds, got second={planner.base_time.second}"
+        assert planner.base_time.microsecond == 0, \
+            f"Base time should have zero microseconds, got microsecond={planner.base_time.microsecond}"
 
     def test_base_time_preserves_provided_boundary_time(self):
         """Test that a time already on a 15-minute boundary is preserved."""
