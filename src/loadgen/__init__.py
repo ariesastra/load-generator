@@ -7,6 +7,7 @@ Load Profile periodic events to benchmark data-collection services.
 
 # Export key modules for easy importing
 from loadgen.csv_reader import load_meter_ids, MeterIdValidationError
+from loadgen.mqtt_client import MQTTClient, MQTTConnectionError, MQTTPublishError
 
 # Note: These modules will be implemented in subsequent plans
 # from loadgen.payload import PayloadFactory
@@ -15,6 +16,9 @@ from loadgen.csv_reader import load_meter_ids, MeterIdValidationError
 __all__ = [
     "load_meter_ids",
     "MeterIdValidationError",
+    "MQTTClient",
+    "MQTTConnectionError",
+    "MQTTPublishError",
     # "PayloadFactory",  # To be implemented in plan 01-03
     # "SlotPlanner",  # To be implemented in plan 01-04
 ]
