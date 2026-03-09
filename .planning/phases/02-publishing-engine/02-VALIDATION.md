@@ -2,8 +2,8 @@
 phase: 02
 slug: publishing-engine
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-10
 ---
 
@@ -50,11 +50,11 @@ created: 2026-03-10
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_mqtt_client.py` — stubs for PUB-01, PUB-02 (MQTT client connection, QoS configuration)
-- [ ] `tests/test_worker_pool.py` — stubs for PUB-03 (worker pool for concurrent publishing)
-- [ ] `tests/test_rate_limiter.py` — stubs for PUB-04 (rate limiter for publish throttling)
-- [ ] `tests/test_retry_policy.py` — stubs for PUB-05 (retry with exponential backoff)
-- [ ] `tests/conftest.py` — shared fixtures (exists from Phase 1, may need extension)
+- [x] `tests/test_mqtt_client.py` — stubs for PUB-01, PUB-02 (MQTT client connection, QoS configuration)
+- [x] `tests/test_worker_pool.py` — stubs for PUB-03 (worker pool for concurrent publishing)
+- [x] `tests/test_rate_limiter.py` — stubs for PUB-04 (rate limiter for publish throttling)
+- [x] `tests/test_retry_policy.py` — stubs for PUB-05 (retry with exponential backoff)
+- [x] `tests/conftest.py` — shared fixtures (exists from Phase 1, may need extension)
 
 *Framework exists from Phase 1. New test stubs needed for publishing engine components.*
 
