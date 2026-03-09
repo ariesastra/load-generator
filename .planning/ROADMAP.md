@@ -52,7 +52,7 @@
 4. User can configure a message rate cap (msg/sec) and tool throttles publishing to not exceed that rate
 5. Tool retries failed publishes with exponential backoff (configurable retry count and backoff multiplier)
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 - [x] 02-00-PLAN.md — Test infrastructure setup (test stubs for MQTT client, worker pool, rate limiter, retry policy)
 - [x] 02-01-PLAN.md — MQTT client with connection config (TLS, auth) and QoS selection (PUB-01, PUB-02)
@@ -102,7 +102,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Input Foundation | 4/4 | Complete | 2026-03-09 |
-| 2. Publishing Engine | 2/6 | Executing | 2026-03-09 |
+| 2. Publishing Engine | 3/6 | In Progress|  |
 | 3. Configuration & CLI | 0/4 | Not started | - |
 | 4. Metrics & Artifacts | 0/2 | Not started | - |
 
