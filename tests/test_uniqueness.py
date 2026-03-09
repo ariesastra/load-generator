@@ -210,11 +210,13 @@ def test_different_meters_same_slot():
     payload2 = factory.generate_payload(meter_id="000000000050", slot_index=0)
     payload3 = factory.generate_payload(meter_id="000000000051", slot_index=0)
 
-    # All should have the same sampling time (no collision)
+    # All should have the same sampling time (no collision for different meters)
     times = [
         payload1["operationResult"]["samplingTime"],
         payload2["operationResult"]["samplingTime"],
         payload3["operationResult"]["samplingTime"],
     ]
 
-    assert len(times) == len(set(times)), "Different meters should be able to use same slot time"
+    # All times should be identical since different meters can share the same slot
+    assert len(times) == 3, "Should have 3 timestamps"
+    assert len(set(times)) == 1, "Different meters should be able to use same slot time"
