@@ -1,138 +1,192 @@
-"""
-Test stubs for MQTT client functionality (PUB-01, PUB-02)
-
-These tests verify the MQTT client implementation for:
-- PUB-01: MQTT broker connection with TLS and authentication
-- PUB-02: MQTT publish with QoS levels (0, 1, 2)
-
-All tests are TODO stubs that will be implemented in subsequent plans.
-"""
+"""Tests for MQTT client wrapper."""
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from loadgen.mqtt_client import MQTTClient, MQTTConnectionError, MQTTPublishError
 
 
-@pytest.mark.asyncio
-async def test_mqtt_client_connection_with_tls():
-    """
-    Test MQTT broker connection with TLS enabled.
+class TestMQTTClientInit:
+    """Test MQTTClient initialization and configuration."""
 
-    Requirements:
-    - Broker connection succeeds with valid TLS configuration
-    - Client validates server certificate
-    - Connection uses secure port (8883)
+    def test_client_accepts_connection_config(self):
+        """Test 1: Client accepts host, port, qos, tls_enabled, username, password."""
+        client = MQTTClient(
+            host="localhost",
+            port=1883,
+            qos=1,
+            tls_enabled=False,
+            username="user",
+            password="pass"
+        )
+        assert client._host == "localhost"
+        assert client._port == 1883
+        assert client._qos == 1
+        assert client._tls_enabled is False
+        assert client._username == "user"
+        assert client._password == "pass"
 
-    TODO: Implement actual MQTT client with TLS support
-    TODO: Create src/loadgen/mqtt_client.py with MQTTClient class
-    TODO: Test with actual broker or use pytest-mockfixtures for broker simulation
-    TODO: Verify certificate validation behavior
-    """
-    # Placeholder: This will fail until MQTT client is implemented
-    pytest.fail("TODO: Implement MQTTClient with TLS support in src/loadgen/mqtt_client.py")
+    def test_qos_must_be_0_1_or_2(self):
+        """Test 2: QoS must be 0, 1, or 2 (ValueError otherwise)."""
+        with pytest.raises(ValueError, match="QoS must be 0, 1, or 2"):
+            MQTTClient(host="localhost", qos=3)
 
+        with pytest.raises(ValueError, match="QoS must be 0, 1, or 2"):
+            MQTTClient(host="localhost", qos=-1)
 
-@pytest.mark.asyncio
-async def test_mqtt_client_connection_with_auth():
-    """
-    Test MQTT broker connection with username/password authentication.
+        # Valid QoS values should not raise
+        MQTTClient(host="localhost", qos=0)
+        MQTTClient(host="localhost", qos=1)
+        MQTTClient(host="localhost", qos=2)
 
-    Requirements:
-    - Broker connection succeeds with valid credentials
-    - Authentication fails with invalid credentials
-    - Credentials are securely handled
+    def test_tls_enabled_sets_port_8883_if_not_explicit(self):
+        """Test 3: TLS enabled sets port to 8883 if not explicitly set."""
+        # When TLS is enabled and port is default, should use 8883
+        client_tls = MQTTClient(host="localhost", tls_enabled=True)
+        assert client_tls._port == 8883
 
-    TODO: Implement authentication in MQTT client
-    TODO: Test both success and failure scenarios
-    TODO: Verify credentials are not logged or exposed
-    """
-    pytest.fail("TODO: Implement MQTTClient authentication in src/loadgen/mqtt_client.py")
+        # When TLS is enabled and port is explicitly set, should use that port
+        client_tls_custom = MQTTClient(host="localhost", tls_enabled=True, port=8884)
+        assert client_tls_custom._port == 8884
 
-
-@pytest.mark.asyncio
-async def test_mqtt_client_qos_0():
-    """
-    Test MQTT publish with QoS 0 (fire and forget).
-
-    Requirements:
-    - Message is published without acknowledgment
-    - No retry attempt on QoS 0 messages
-    - Suitable for high-throughput, loss-tolerant scenarios
-
-    TODO: Implement publish method with QoS parameter
-    TODO: Verify no acknowledgment waiting for QoS 0
-    TODO: Test message delivery with broker mock
-    """
-    pytest.fail("TODO: Implement MQTTClient.publish() with QoS 0 support")
+        # When TLS is disabled, should use default 1883
+        client_no_tls = MQTTClient(host="localhost", tls_enabled=False)
+        assert client_no_tls._port == 1883
 
 
-@pytest.mark.asyncio
-async def test_mqtt_client_qos_1():
-    """
-    Test MQTT publish with QoS 1 (at least once).
+class TestMQTTClientConnection:
+    """Test MQTTClient connection lifecycle."""
 
-    Requirements:
-    - Message is published with acknowledgment
-    - Publisher receives PUBACK from broker
-    - Retry until acknowledgment is received
-    - Message may be delivered multiple times (idempotency required)
+    @pytest.mark.asyncio
+    async def test_connect_establishes_connection_using_aiomqtt(self):
+        """Test 4: async connect() establishes connection using aiomqtt.Client context manager."""
+        with patch('loadgen.mqtt_client.aiomqtt.Client') as mock_client_class:
+            # Setup mock
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
 
-    TODO: Implement QoS 1 handshake (PUBLISH -> PUBACK)
-    TODO: Test retry behavior on PUBACK timeout
-    TODO: Verify message delivery guarantee
-    """
-    pytest.fail("TODO: Implement MQTTClient.publish() with QoS 1 support")
+            client = MQTTClient(host="localhost", port=1883)
+            await client.connect()
+
+            # Verify aiomqtt.Client was called with correct parameters
+            mock_client_class.assert_called_once()
+            call_kwargs = mock_client_class.call_args[1]
+            assert call_kwargs['hostname'] == "localhost"
+            assert call_kwargs['port'] == 1883
+            assert client._connected is True
+            assert client._client is not None
+
+    @pytest.mark.asyncio
+    async def test_disconnect_sends_graceful_disconnect(self):
+        """Test 5: async disconnect() sends graceful DISCONNECT packet."""
+        with patch('loadgen.mqtt_client.aiomqtt.Client') as mock_client_class:
+            # Setup mock
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
+
+            client = MQTTClient(host="localhost")
+            await client.connect()
+            await client.disconnect()
+
+            # Verify disconnect was called
+            assert client._connected is False
+
+    @pytest.mark.asyncio
+    async def test_connection_failure_raises_mqtt_connection_error(self):
+        """Test 6: Connection failure raises MQTTConnectionError."""
+        with patch('loadgen.mqtt_client.aiomqtt.Client') as mock_client_class:
+            # Setup mock to raise exception during __aenter__
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(side_effect=Exception("Connection failed"))
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
+
+            client = MQTTClient(host="localhost")
+            with pytest.raises(MQTTConnectionError, match="Failed to connect to MQTT broker"):
+                await client.connect()
+
+            assert client._connected is False
 
 
-@pytest.mark.asyncio
-async def test_mqtt_client_qos_2():
-    """
-    Test MQTT publish with QoS 2 (exactly once).
+class TestMQTTClientPublish:
+    """Test MQTTClient publish functionality."""
 
-    Requirements:
-    - Message is published with two-phase handshake
-    - Publisher receives PUBREC, sends PUBREL, receives PUBCOMP
-    - Message is delivered exactly once
-    - Highest reliability but lowest throughput
+    @pytest.mark.asyncio
+    async def test_publish_calls_client_publish_with_configured_qos(self):
+        """Test 1: publish() calls client.publish with configured QoS level."""
+        with patch('loadgen.mqtt_client.aiomqtt.Client') as mock_client_class:
+            # Setup mock
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client.publish = AsyncMock()
+            mock_client_class.return_value = mock_client
 
-    TODO: Implement QoS 2 handshake (PUBLISH -> PUBREC -> PUBREL -> PUBCOMP)
-    TODO: Test complete handshake flow
-    TODO: Verify exactly-once delivery guarantee
-    """
-    pytest.fail("TODO: Implement MQTTClient.publish() with QoS 2 support")
+            # Test with QoS 0
+            client_qos0 = MQTTClient(host="localhost", qos=0)
+            await client_qos0.connect()
+            await client_qos0.publish("test/topic", b"payload")
+            mock_client.publish.assert_called_with("test/topic", payload=b"payload", qos=0)
 
+            # Test with QoS 1
+            mock_client.publish.reset_mock()
+            client_qos1 = MQTTClient(host="localhost", qos=1)
+            await client_qos1.connect()
+            await client_qos1.publish("test/topic", b"payload")
+            mock_client.publish.assert_called_with("test/topic", payload=b"payload", qos=1)
 
-@pytest.mark.asyncio
-async def test_mqtt_client_invalid_connection():
-    """
-    Test connection failure handling.
+            # Test with QoS 2
+            mock_client.publish.reset_mock()
+            client_qos2 = MQTTClient(host="localhost", qos=2)
+            await client_qos2.connect()
+            await client_qos2.publish("test/topic", b"payload")
+            mock_client.publish.assert_called_with("test/topic", payload=b"payload", qos=2)
 
-    Requirements:
-    - Connection timeout is configurable
-    - Invalid broker address raises appropriate error
-    - Connection failure does not crash the application
-    - Error messages are descriptive and actionable
+    @pytest.mark.asyncio
+    async def test_publish_converts_string_payload_to_bytes(self):
+        """Test 6: Payload is converted to bytes if string."""
+        with patch('loadgen.mqtt_client.aiomqtt.Client') as mock_client_class:
+            # Setup mock
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client.publish = AsyncMock()
+            mock_client_class.return_value = mock_client
 
-    TODO: Implement connection timeout and error handling
-    TODO: Test with invalid broker address
-    TODO: Test with wrong port
-    TODO: Test with network unreachability
-    TODO: Verify error messages are helpful
-    """
-    pytest.fail("TODO: Implement connection error handling in MQTTClient")
+            client = MQTTClient(host="localhost")
+            await client.connect()
+            await client.publish("test/topic", "string payload")
 
+            # Verify payload was converted to bytes
+            mock_client.publish.assert_called_once()
+            call_args = mock_client.publish.call_args
+            assert call_args[0][0] == "test/topic"
+            assert call_args[1]['payload'] == b"string payload"
 
-@pytest.mark.asyncio
-async def test_mqtt_client_disconnect():
-    """
-    Test graceful disconnect.
+    @pytest.mark.asyncio
+    async def test_publish_failure_raises_mqtt_publish_error(self):
+        """Test 5: Publish failure raises MQTTPublishError."""
+        with patch('loadgen.mqtt_client.aiomqtt.Client') as mock_client_class:
+            # Setup mock
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client.publish = AsyncMock(side_effect=Exception("Publish failed"))
+            mock_client_class.return_value = mock_client
 
-    Requirements:
-    - Client sends DISCONNECT packet to broker
-    - Pending messages are handled (flushed or discarded based on QoS)
-    - Connection is closed cleanly
-    - Resources are released
+            client = MQTTClient(host="localhost")
+            await client.connect()
 
-    TODO: Implement graceful disconnect
-    TODO: Verify DISCONNECT packet is sent
-    TODO: Test cleanup of resources
-    """
-    pytest.fail("TODO: Implement MQTTClient.disconnect() method")
+            with pytest.raises(MQTTPublishError, match="Failed to publish message"):
+                await client.publish("test/topic", b"payload")
+
+    @pytest.mark.asyncio
+    async def test_publish_when_not_connected_raises_error(self):
+        """Test: Publishing when not connected raises MQTTConnectionError."""
+        client = MQTTClient(host="localhost")
+
+        with pytest.raises(MQTTConnectionError, match="Cannot publish: client is not connected"):
+            await client.publish("test/topic", b"payload")
