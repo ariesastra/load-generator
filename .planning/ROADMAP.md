@@ -28,7 +28,12 @@
 3. User can generate unique `(meterId, samplingTime)` pairs per run (no duplicates within a single benchmark run)
 4. User can assign valid 15-minute boundary timestamps via slot planner (timestamps align to :00, :15, :30, :45 minute boundaries)
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+- [ ] 01-01-PLAN.md — Test infrastructure setup (pytest.ini, conftest.py, test stubs)
+- [ ] 01-02-PLAN.md — CSV meter ID loader with validation and deduplication
+- [ ] 01-03-PLAN.md — Slot planner for 15-minute boundary timestamps
+- [ ] 01-04-PLAN.md — Payload factory with uniqueness guarantees
 
 ---
 
@@ -89,7 +94,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Input Foundation | 0/4 | Not started | - |
+| 1. Input Foundation | 0/4 | Planning complete | - |
 | 2. Publishing Engine | 0/5 | Not started | - |
 | 3. Configuration & CLI | 0/4 | Not started | - |
 | 4. Metrics & Artifacts | 0/2 | Not started | - |
@@ -131,3 +136,4 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 
 ---
 *Roadmap created: 2026-03-09*
+*Last updated: 2026-03-09 (Phase 1 planning complete)*
