@@ -8,13 +8,25 @@ A standalone Python-based MQTT load generator that publishes realistic Load Prof
 
 Prove that Werkudoro's data-collection can handle production-scale MQTT traffic (200k events) by demonstrating linear scaling characteristics with realistic, non-duplicate payloads.
 
+## Current Milestone: v1.0 Core
+
+**Goal:** Build a functional Python MQTT load generator that can publish unique LP periodic events at scale.
+
+**Target features:**
+- CSV input with real meter IDs
+- Unique LP periodic payload generation
+- Async MQTT publisher (configurable workers, rate cap, QoS, retry)
+- Basic metrics output
+- Scenario configs (1k, 5k, 10k runs)
+- CLI interface
+
 ## Requirements
 
 ### Validated
 
 (None yet — ship to validate)
 
-### Active
+### Active (v1.0)
 
 - [ ] Read meter IDs from real CSV input
 - [ ] Generate LP periodic payloads with unique trxId and (meterId, samplingTime) per run
@@ -24,7 +36,14 @@ Prove that Werkudoro's data-collection can handle production-scale MQTT traffic 
 - [ ] Scenario configs for 1k, 5k, 10k event runs
 - [ ] Run artifact output (run.json, telemetry.csv, summary.md, failed_events.jsonl)
 - [ ] Linearity analysis comparing runs across the scaling ladder
-- [ ] CLI interface for running scenarios and comparing results
+- [ ] CLI interface for running scenarios
+
+### Active (v1.1 - Deferred)
+
+- [ ] Resource telemetry (CPU/memory) during benchmark runs
+- [ ] Run artifact output (run.json, telemetry.csv, summary.md, failed_events.jsonl)
+- [ ] Linearity analysis comparing runs across the scaling ladder
+- [ ] CLI comparison commands for analyzing results
 
 ### Out of Scope
 
@@ -61,4 +80,4 @@ Prove that Werkudoro's data-collection can handle production-scale MQTT traffic 
 | Real CSV over synthetic meter IDs | Production-realistic benchmark; real data already available | — Pending |
 
 ---
-*Last updated: 2026-03-09 after initialization*
+*Last updated: 2026-03-09 after v1.0 milestone start*
