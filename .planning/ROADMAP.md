@@ -52,7 +52,14 @@
 4. User can configure a message rate cap (msg/sec) and tool throttles publishing to not exceed that rate
 5. Tool retries failed publishes with exponential backoff (configurable retry count and backoff multiplier)
 
-**Plans:** TBD
+**Plans:** 5 plans created
+
+- [ ] 02-00-PLAN.md — Test infrastructure setup (test stubs for MQTT client, worker pool, rate limiter, retry policy)
+- [ ] 02-01-PLAN.md — MQTT client with connection config (TLS, auth) and QoS selection (PUB-01, PUB-02)
+- [ ] 02-02-PLAN.md — Worker pool for concurrent publishing with pre-connect and fail-fast (PUB-03)
+- [ ] 02-03-PLAN.md — Rate limiter with token bucket algorithm (PUB-04)
+- [ ] 02-04-PLAN.md — Retry policy with exponential backoff (PUB-05)
+- [ ] 02-05-PLAN.md — Publisher orchestrator with graceful shutdown
 
 ---
 
@@ -94,8 +101,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Input Foundation | 1/4 | In Progress|  |
-| 2. Publishing Engine | 0/5 | Not started | - |
+| 1. Input Foundation | 4/4 | Complete | 2026-03-09 |
+| 2. Publishing Engine | 0/6 | Planning | - |
 | 3. Configuration & CLI | 0/4 | Not started | - |
 | 4. Metrics & Artifacts | 0/2 | Not started | - |
 
@@ -115,10 +122,10 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INPUT-01 | Phase 1 | Pending |
-| INPUT-02 | Phase 1 | Pending |
-| INPUT-03 | Phase 1 | Pending |
-| INPUT-04 | Phase 1 | Pending |
+| INPUT-01 | Phase 1 | Complete |
+| INPUT-02 | Phase 1 | Complete |
+| INPUT-03 | Phase 1 | Complete |
+| INPUT-04 | Phase 1 | Complete |
 | PUB-01 | Phase 2 | Pending |
 | PUB-02 | Phase 2 | Pending |
 | PUB-03 | Phase 2 | Pending |
@@ -136,4 +143,4 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 
 ---
 *Roadmap created: 2026-03-09*
-*Last updated: 2026-03-09 (Phase 1 planning complete)*
+*Last updated: 2026-03-10 (Phase 2 planning complete)*
