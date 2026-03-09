@@ -35,7 +35,7 @@ def sample_meter_ids():
     """
     Return list of test meter IDs.
 
-    These are valid 15-character zero-padded meter IDs
+    These are valid 12-character zero-padded meter IDs
     matching the format in Asset-Meter.csv.
     """
     return ["000000000049", "000000000050", "000000000051"]

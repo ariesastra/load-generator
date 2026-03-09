@@ -43,7 +43,7 @@ def test_load_meter_ids_skips_invalid_rows(csv_with_invalid_rows):
 
 
 def test_load_meter_ids_validates_format():
-    """Test 15-character format validation."""
+    """Test 12-character format validation."""
     from loadgen.csv_reader import load_meter_ids
     import tempfile
 
@@ -52,7 +52,7 @@ def test_load_meter_ids_validates_format():
         f.write("meter_id\n")
         f.write("123\n")  # Too short
         f.write("000000000000000000049\n")  # Too long
-        f.write("000000000049\n")  # Valid
+        f.write("000000000049\n")  # Valid (12 characters)
         csv_path = f.name
 
     result = load_meter_ids(csv_path)

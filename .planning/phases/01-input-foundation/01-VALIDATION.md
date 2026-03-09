@@ -2,8 +2,8 @@
 phase: 1
 slug: input-foundation
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-09
 ---
 
@@ -50,12 +50,12 @@ created: 2026-03-09
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_csv_loader.py` — stubs for INPUT-01 CSV loading validation
-- [ ] `tests/test_payload_factory.py` — stubs for INPUT-02 payload generation
-- [ ] `tests/test_uniqueness.py` — stubs for INPUT-03 uniqueness tracking
-- [ ] `tests/test_slot_planner.py` — stubs for INPUT-04 slot planning
-- [ ] `tests/conftest.py` — shared fixtures (sample CSV, test meter IDs)
-- [ ] `pytest.ini` — pytest configuration
+- [x] `tests/test_csv_loader.py` — stubs for INPUT-01 CSV loading validation
+- [x] `tests/test_payload_factory.py` — stubs for INPUT-02 payload generation
+- [x] `tests/test_uniqueness.py` — stubs for INPUT-03 uniqueness tracking
+- [x] `tests/test_slot_planner.py` — stubs for INPUT-04 slot planning
+- [x] `tests/conftest.py` — shared fixtures (sample CSV, test meter IDs)
+- [x] `pytest.ini` — pytest configuration
 
 ---
 
@@ -71,11 +71,11 @@ created: 2026-03-09
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete - Wave 0 test infrastructure established
