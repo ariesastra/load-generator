@@ -129,3 +129,19 @@ def uniqueness_set():
     Used for testing uniqueness guarantees in payload generation.
     """
     return set()
+
+
+@pytest.fixture
+def csv_missing_meter_column(tmp_path):
+    """
+    Create a CSV file without meter_id column.
+
+    Used for testing error handling when required column is missing.
+    """
+    csv_path = tmp_path / "no_meter_column.csv"
+    csv_content = """warehouse_id,warehouse_name,project_id,hes_id,meter_manufacture
+WH-PNP,Nusa Penida,pnp,pnp-trilliant,Sanxing
+WH-PNP,Nusa Penida,pnp,pnp-trilliant,Sanxing
+"""
+    csv_path.write_text(csv_content)
+    return csv_path
