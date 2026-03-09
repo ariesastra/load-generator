@@ -9,10 +9,13 @@ Key features:
 - Creates N MQTTClient workers on initialization
 - Pre-connects all workers before publishing begins
 - Fail-fast if any worker fails to connect
+- Concurrent publish dispatch using asyncio.gather (Python 3.9 compatible)
+- Round-robin message distribution across workers
 - Cleanup method to disconnect all workers gracefully
 """
 
 import asyncio
+import json
 import structlog
 from typing import List, Dict, Any, Optional, Union
 
@@ -110,6 +113,7 @@ class WorkerPool:
         self._workers: List[MQTTClient] = []
         self._initialized = False
         self._logger = structlog.get_logger()
+        self._current_worker_index = 0  # For round-robin distribution
 
         # Create N MQTTClient instances
         for _ in range(worker_count):
@@ -202,6 +206,68 @@ class WorkerPool:
 
         self._initialized = False
         self._logger.info("worker_pool_cleaned_up")
+
+    async def publish(self, messages: List[Dict[str, Any]], topic: str) -> None:
+        """
+        Dispatch messages across workers concurrently using round-robin.
+
+        This method distributes messages across workers in a round-robin fashion
+        and publishes them concurrently using asyncio.gather. Individual publish
+        failures are logged but don't stop other workers from publishing.
+
+        Args:
+            messages: List of message dictionaries to publish
+            topic: MQTT topic to publish to
+
+        Raises:
+            RuntimeError: If WorkerPool has not been initialized
+        """
+        if not self._initialized:
+            raise RuntimeError("WorkerPool not initialized. Call initialize() first.")
+
+        # Create tasks for each message
+        tasks = []
+        for message in messages:
+            # Select worker using round-robin
+            worker_index = self._current_worker_index % self._worker_count
+            worker = self._workers[worker_index]
+            self._current_worker_index += 1
+
+            # Create task for this message
+            task = self._worker_publish_task(worker, topic, message)
+            tasks.append(task)
+
+        # Execute all tasks concurrently
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _worker_publish_task(
+        self, worker: MQTTClient, topic: str, message: Dict[str, Any]
+    ) -> None:
+        """
+        Publish a single message using the given worker.
+
+        This private method wraps worker.publish() with error handling and logging.
+        Individual failures are logged but don't propagate to stop other workers.
+
+        Args:
+            worker: The MQTTClient worker to use for publishing
+            topic: MQTT topic to publish to
+            message: Message dictionary to publish
+        """
+        try:
+            # Serialize message to JSON (using stdlib json for now)
+            payload = json.dumps(message).encode("utf-8")
+            await worker.publish(topic, payload)
+        except Exception as e:
+            # Log failure but don't raise - other workers continue
+            self._logger.warning(
+                "worker_publish_failed",
+                worker_id=id(worker),
+                topic=topic,
+                message_id=message.get("trxId", message.get("meterId", "unknown")),
+                error=str(e),
+            )
 
     @property
     def worker_count(self) -> int:
