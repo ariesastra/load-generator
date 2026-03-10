@@ -82,9 +82,13 @@ progress:
 
 ## Pending Todos
 
-1. **Add custom date for sampling_time in YAML scenario** — Enable custom base_time parameter in scenario YAML for historical/testing data simulation
-   - File: `.planning/todos/pending/2026-03-10-add-custom-date-for-sampling-time-in-yaml-scenario.md`
-   - Area: general
+None.
+
+## Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Add custom date for sampling_time in YAML scenario | 2026-03-10 | 475ea2c | [1-execute-pending-todos](./quick/1-execute-pending-todos/) |
 
 ## Blockers/Concerns
 
@@ -96,7 +100,10 @@ None.
 
 ## Session Continuity
 
-**Last session:** 2026-03-10T17:27:03.868Z
+**Last session:** 2026-03-10T23:21:03.000Z
+**Status:** Quick task 1 complete — Added custom base_time support for sampling_time in YAML scenarios. Users can now specify custom start dates for historical data simulation or date-based testing. 19 tests added, full backward compatibility maintained.
+
+**Previous session:** 2026-03-10T17:27:03.868Z
 **Status:** Plan 03-01 complete — Configuration schema and YAML loader with dataclasses, PyYAML integration, comprehensive validation, and 20 passing tests. Exported config classes and missing Phase 1 exports (PayloadFactory, SlotPlanner). Ready for CLI implementation.
 
 **Stopped at:** Completed 03-03-PLAN.md
