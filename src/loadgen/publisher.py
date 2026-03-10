@@ -217,6 +217,8 @@ class Publisher:
         """
         Generate payloads for publishing.
 
+        Generates message_count events PER METER, not total messages.
+
         Returns:
             List of payload dictionaries
 
@@ -232,20 +234,16 @@ class Publisher:
             )
 
         messages = []
-        slot_indices = {meter_id: 0 for meter_id in self._meter_ids}
 
-        # Generate payloads round-robin across meter IDs
-        for i in range(self.message_count):
-            meter_id = self._meter_ids[i % len(self._meter_ids)]
-            slot_index = slot_indices[meter_id]
+        # Generate payloads per meter (not total)
+        for meter_id in self._meter_ids:
+            for slot_index in range(self.message_count):
+                # Generate payload using factory
+                payload = self._payload_factory.generate_payload(
+                    meter_id=meter_id, slot_index=slot_index
+                )
 
-            # Generate payload using factory
-            payload = self._payload_factory.generate_payload(
-                meter_id=meter_id, slot_index=slot_index
-            )
-
-            messages.append(payload)
-            slot_indices[meter_id] = slot_index + 1
+                messages.append(payload)
 
         return messages
 
