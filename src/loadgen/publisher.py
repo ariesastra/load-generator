@@ -63,6 +63,7 @@ class Publisher:
         retry_config: Optional[Dict[str, Any]] = None,
         artifact_dir: Optional[Union[str, Path]] = None,
         meter_ids_csv: Optional[Union[str, Path]] = None,
+        topic: str = "meter/loadProfile",
     ):
         """
         Initialize Publisher orchestrator.
@@ -75,6 +76,7 @@ class Publisher:
             retry_config: Retry policy configuration
             artifact_dir: Directory for writing artifacts
             meter_ids_csv: Path to CSV with meter IDs (default: Asset-Meter.csv)
+            topic: MQTT topic to publish to (default: "meter/loadProfile")
         """
         self.broker_config = broker_config
         self.worker_count = worker_count
@@ -83,6 +85,7 @@ class Publisher:
         self.retry_config = retry_config or {}
         self.artifact_dir = Path(artifact_dir) if artifact_dir else None
         self.meter_ids_csv = Path(meter_ids_csv) if meter_ids_csv else None
+        self.topic = topic
         self._interrupted = False
 
         # Initialize components
@@ -123,7 +126,7 @@ class Publisher:
         self._interrupt_count = 0
         self._last_interrupt_time = 0.0
 
-    async def run(self, topic: str = "load-profile") -> Dict[str, Any]:
+    async def run(self, topic: Optional[str] = None) -> Dict[str, Any]:
         """
         Run the full publishing workflow.
 
@@ -134,7 +137,7 @@ class Publisher:
         4. Cleanup workers
 
         Args:
-            topic: MQTT topic to publish to
+            topic: MQTT topic to publish to (defaults to self.topic)
 
         Returns:
             Dict with stats: sent, failed, duration
@@ -144,6 +147,10 @@ class Publisher:
         """
         start_time = time.time()
         stats: Dict[str, Any] = {"sent": 0, "failed": 0, "duration": 0.0}
+
+        # Use instance topic if not specified
+        if topic is None:
+            topic = self.topic
 
         try:
             # Initialize worker pool
