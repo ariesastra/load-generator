@@ -71,7 +71,9 @@ progress:
 
 ## Pending Todos
 
-None captured yet.
+**1 pending todo captured:**
+
+- `update-payloadfactory-loadprofile-schema-to-match-production-format` — PayloadFactory schema differs from production format; needs flattening and additional fields
 
 ## Blockers/Concerns
 
