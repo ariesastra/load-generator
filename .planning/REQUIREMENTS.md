@@ -30,7 +30,7 @@ Requirements for v1.0 Core milestone. Each maps to roadmap phases.
 
 ### Configuration
 
-- [ ] **CONFIG-01**: User can configure scenario for 1k, 5k, 10k event runs
+- [x] **CONFIG-01**: User can configure scenario for 1k, 5k, 10k event runs
 - [x] **CONFIG-02**: User can configure MQTT topic
 - [x] **CONFIG-03**: User can configure payload template
 
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PUB-03 | Phase 2 | Complete |
 | PUB-04 | Phase 2 | Complete |
 | PUB-05 | Phase 2 | Pending |
-| CONFIG-01 | Phase 3 | Pending |
+| CONFIG-01 | Phase 3 | Complete |
 | CONFIG-02 | Phase 3 | Pending |
 | CONFIG-03 | Phase 3 | Pending |
 | MEAS-01 | Phase 4 | Pending |
