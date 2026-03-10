@@ -1,0 +1,22 @@
+name: "5k Message Benchmark"
+description: "Medium-scale test with 5,000 messages to validate scaling characteristics"
+
+message_count: 5000
+worker_count: 4
+rate_limit: 250  # 250 msg/sec = 20 seconds for 5k messages
+qos: 1
+
+broker:
+  host: localhost
+  port: 1883
+  tls: false
+  # username: null
+  # password: null
+
+mqtt:
+  topic: meter/loadProfile
+  qos: 1
+
+payload:
+  dcu_id: DCU-001
+  meter_id_source: Asset-Meter.csv
