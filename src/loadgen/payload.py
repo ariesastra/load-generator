@@ -99,28 +99,47 @@ class PayloadFactory:
         collection_dt = sampling_dt + timedelta(seconds=30)
         collection_time = self._format_iso8601(collection_dt)
 
-        # Build payload matching python-mqtt-benchmark.md schema
+        # Build payload matching production loadprofile schema
+        # All fields are directly in operationResult (not nested under "registers")
         payload = {
             "trxId": trx_id,
-            "meterId": meter_id,
             "dcuId": self.dcu_id,
+            "meterId": meter_id,
             "operationType": "meterLoadProfilePeriodic",
             "operationResult": {
                 "samplingTime": sampling_time,
                 "collectionTime": collection_time,
-                "registers": {
-                    # Placeholder LP register values for phase 1
-                    # Real LP data simulation is deferred to phase 2+
-                    "voltageL1": 220.0,
-                    "voltageL2": 220.0,
-                    "voltageL3": 220.0,
-                    "currentL1": 5.0,
-                    "currentL2": 5.0,
-                    "currentL3": 5.0,
-                    "powerFactor": 0.95,
-                    "activePower": 3300.0,
-                    "reactivePower": 1080.0,
-                }
+                "meterId": meter_id,
+                "clock": sampling_time,  # Clock matches sampling time
+                "status": "OK",
+                "alarmRegister": "00000000000000000000100000000000",
+                # Voltage values (V)
+                "voltageL1": 220.0,
+                "voltageL2": 220.0,
+                "voltageL3": 220.0,
+                # Current values (A)
+                "currentL1": 5.0,
+                "currentL2": 5.0,
+                "currentL3": 5.0,
+                # Energy export values (Wh)
+                "whExportL1": 100.0,
+                "whExportL2": 100.0,
+                "whExportL3": 100.0,
+                "whExportTotal": 300.0,
+                # Energy import values (Wh)
+                "whImportL1": 400.0,
+                "whImportL2": 500.0,
+                "whImportL3": 600.0,
+                "whImportTotal": 1500.0,
+                # Power values (W)
+                "wExportTotal": 10.0,
+                "wImportTotal": 100.0,
+                # Reactive energy values (varh)
+                "varhExportTotal": 1.0,
+                "varhImportTotal": 1.0,
+                "varhTotal": 10.0,
+                # Power factor
+                "powerFactor": 0.95,
             }
         }
 

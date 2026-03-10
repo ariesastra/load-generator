@@ -46,7 +46,7 @@ def test_generate_payload_has_required_fields():
          - meterId (string)
          - dcuId (string)
          - operationType = "meterLoadProfilePeriodic"
-         - operationResult (object with samplingTime, collectionTime, registers)
+         - operationResult (object with samplingTime, collectionTime, meterId, clock, status, alarmRegister)
     """
     factory = PayloadFactory()
     payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
@@ -57,11 +57,13 @@ def test_generate_payload_has_required_fields():
 
     assert payload["operationType"] == "meterLoadProfilePeriodic"
 
-    # Check operationResult sub-fields
+    # Check operationResult sub-fields (flat structure, not nested)
     operation_result = payload["operationResult"]
-    assert "samplingTime" in operation_result
-    assert "collectionTime" in operation_result
-    assert "registers" in operation_result
+    required_op_fields = [
+        "samplingTime", "collectionTime", "meterId", "clock", "status", "alarmRegister"
+    ]
+    for field in required_op_fields:
+        assert field in operation_result, f"Missing operationResult field: {field}"
 
 
 def test_generate_payload_matches_schema():
@@ -173,3 +175,145 @@ def test_default_dcu_id():
     payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
 
     assert payload["dcuId"] == "DCU-001"
+
+
+def test_generate_payload_has_voltage_fields():
+    """
+    Verify operationResult contains voltage fields.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: All voltage fields (L1, L2, L3) are present
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    assert "voltageL1" in operation_result
+    assert "voltageL2" in operation_result
+    assert "voltageL3" in operation_result
+    assert isinstance(operation_result["voltageL1"], (int, float))
+
+
+def test_generate_payload_has_current_fields():
+    """
+    Verify operationResult contains current fields.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: All current fields (L1, L2, L3) are present
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    assert "currentL1" in operation_result
+    assert "currentL2" in operation_result
+    assert "currentL3" in operation_result
+    assert isinstance(operation_result["currentL1"], (int, float))
+
+
+def test_generate_payload_has_energy_fields():
+    """
+    Verify operationResult contains energy (wh) fields.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: All energy fields (whExportL1/L2/L3/Total, whImportL1/L2/L3/Total) are present
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    energy_fields = [
+        "whExportL1", "whExportL2", "whExportL3", "whExportTotal",
+        "whImportL1", "whImportL2", "whImportL3", "whImportTotal"
+    ]
+    for field in energy_fields:
+        assert field in operation_result, f"Missing energy field: {field}"
+        assert isinstance(operation_result[field], (int, float))
+
+
+def test_generate_payload_has_power_fields():
+    """
+    Verify operationResult contains power (w) fields.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: Power fields (wExportTotal, wImportTotal) are present
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    assert "wExportTotal" in operation_result
+    assert "wImportTotal" in operation_result
+    assert isinstance(operation_result["wExportTotal"], (int, float))
+    assert isinstance(operation_result["wImportTotal"], (int, float))
+
+
+def test_generate_payload_has_reactive_energy_fields():
+    """
+    Verify operationResult contains reactive energy (varh) fields.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: Reactive energy fields (varhExportTotal, varhImportTotal, varhTotal) are present
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    assert "varhExportTotal" in operation_result
+    assert "varhImportTotal" in operation_result
+    assert "varhTotal" in operation_result
+    assert isinstance(operation_result["varhTotal"], (int, float))
+
+
+def test_generate_payload_has_power_factor():
+    """
+    Verify operationResult contains powerFactor field.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: powerFactor field is present and is a number
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    assert "powerFactor" in operation_result
+    assert isinstance(operation_result["powerFactor"], (int, float))
+
+
+def test_generate_payload_status_and_alarm():
+    """
+    Verify operationResult contains status and alarmRegister fields.
+
+    Given: A payload is generated
+    When: The operationResult is examined
+    Then: status is "OK" and alarmRegister is a 32-character string
+    """
+    factory = PayloadFactory()
+    payload = factory.generate_payload(meter_id="000000000049", slot_index=0)
+
+    operation_result = payload["operationResult"]
+    assert operation_result["status"] == "OK"
+    assert "alarmRegister" in operation_result
+    assert len(operation_result["alarmRegister"]) == 32  # 32-bit register string
+
+
+def test_generate_payload_meter_id_in_operation_result():
+    """
+    Verify operationResult contains meterId field matching payload meterId.
+
+    Given: A payload is generated with a specific meterId
+    When: The operationResult is examined
+    Then: operationResult.meterId matches payload.meterId
+    """
+    factory = PayloadFactory()
+    meter_id = "000000000049"
+    payload = factory.generate_payload(meter_id=meter_id, slot_index=0)
+
+    assert payload["meterId"] == meter_id
+    assert payload["operationResult"]["meterId"] == meter_id
