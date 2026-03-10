@@ -480,3 +480,199 @@ class TestWorkerPoolPublish:
 
         # With 3 concurrent tasks of 0.01s each, total should be ~0.01s, not 0.03s
         assert elapsed < 0.02  # Allow some margin
+
+
+# ─── Task 3: Retry Policy integration ────────────────────────────────────────
+
+
+class TestWorkerPoolRetryPolicy:
+    """Test WorkerPool integration with RetryPolicy."""
+
+    @pytest.mark.asyncio
+    async def test_workerpool_accepts_optional_retry_policy(self, broker_config):
+        """
+        Test WorkerPool accepts optional retry_policy parameter.
+
+        Given: WorkerPool class
+        When: Initialized with a retry_policy
+        Then: Policy stored and accessible
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.retry_policy import RetryPolicy, BackoffStrategy
+
+        policy = RetryPolicy(max_retries=3, strategy=BackoffStrategy.EXPONENTIAL)
+        pool = WorkerPool(
+            worker_count=2, broker_config=broker_config, retry_policy=policy
+        )
+        assert pool._retry_policy is policy
+
+    @pytest.mark.asyncio
+    async def test_workerpool_without_retry_policy_works_normally(self, broker_config):
+        """
+        Test WorkerPool works normally without retry_policy (default None).
+
+        Given: WorkerPool without retry_policy
+        When: Initialized
+        Then: retry_policy is None and pool functions normally
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        pool = WorkerPool(worker_count=2, broker_config=broker_config)
+        assert pool._retry_policy is None
+
+    @pytest.mark.asyncio
+    async def test_publish_wraps_each_call_in_retry_policy(self, broker_config):
+        """
+        Test publish() wraps each publish call in retry_policy.retry().
+
+        Given: WorkerPool with a retry_policy
+        When: publish() is called with messages
+        Then: retry_policy.retry() is called for each message
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.retry_policy import RetryPolicy, BackoffStrategy
+
+        policy = RetryPolicy(max_retries=3, strategy=BackoffStrategy.EXPONENTIAL)
+        policy.retry = AsyncMock(return_value=None)
+
+        pool = WorkerPool(
+            worker_count=2, broker_config=broker_config, retry_policy=policy
+        )
+        await pool.initialize()
+
+        messages = [
+            {"trxId": "tx-001", "value": 1},
+            {"trxId": "tx-002", "value": 2},
+        ]
+        await pool.publish(messages, "test/topic")
+
+        # retry should be called once per message
+        assert policy.retry.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_retryable_errors_trigger_retries_via_policy(self, broker_config):
+        """
+        Test retryable errors are handled via retry_policy (retries occur).
+
+        Given: WorkerPool with retry_policy and a worker that raises RetryableError twice
+        When: publish() is called
+        Then: retry_policy handles retries without raising at publish level
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.retry_policy import RetryPolicy, BackoffStrategy, RetryableError
+
+        policy = RetryPolicy(
+            max_retries=3,
+            strategy=BackoffStrategy.FIXED,
+            base_delay=0.001,  # Very short for tests
+        )
+
+        pool = WorkerPool(
+            worker_count=1, broker_config=broker_config, retry_policy=policy
+        )
+        await pool.initialize()
+
+        call_count = 0
+        original_publish = pool._workers[0].publish
+
+        async def flaky_publish(topic, payload):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise RetryableError("QoS ack timeout")
+            return await original_publish(topic, payload)
+
+        pool._workers[0].publish = flaky_publish
+
+        messages = [{"trxId": "tx-retry", "value": 42}]
+        # Should not raise - retry_policy handles the retries
+        await pool.publish(messages, "test/topic")
+
+        # 2 failures + 1 success = 3 calls
+        assert call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_non_retryable_errors_fail_immediately(self, broker_config):
+        """
+        Test NonRetryableError fails immediately without retrying.
+
+        Given: WorkerPool with retry_policy and a worker that raises NonRetryableError
+        When: publish() is called
+        Then: Worker called only once (no retries), failure logged
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.retry_policy import RetryPolicy, BackoffStrategy, NonRetryableError
+
+        policy = RetryPolicy(
+            max_retries=3,
+            strategy=BackoffStrategy.FIXED,
+            base_delay=0.001,
+        )
+
+        pool = WorkerPool(
+            worker_count=1, broker_config=broker_config, retry_policy=policy
+        )
+        await pool.initialize()
+
+        call_count = 0
+
+        async def non_retryable_publish(topic, payload):
+            nonlocal call_count
+            call_count += 1
+            raise NonRetryableError("Connection refused")
+
+        pool._workers[0].publish = non_retryable_publish
+
+        messages = [{"trxId": "tx-nr", "value": 1}]
+        # Should not raise at publish level (individual failures logged)
+        await pool.publish(messages, "test/topic")
+
+        # Called exactly once — NonRetryableError not retried
+        assert call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_failed_messages_written_to_artifact_if_configured(
+        self, broker_config, tmp_path
+    ):
+        """
+        Test failed messages written to artifact when retry_policy has artifact_path.
+
+        Given: WorkerPool with retry_policy that has artifact_path configured
+        When: publish() is called and all retries exhausted
+        Then: Artifact file contains failed message entry
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.retry_policy import RetryPolicy, BackoffStrategy, RetryableError
+
+        artifact_path = str(tmp_path / "failed_events.jsonl")
+        policy = RetryPolicy(
+            max_retries=1,
+            strategy=BackoffStrategy.FIXED,
+            base_delay=0.001,
+            artifact_path=artifact_path,
+        )
+
+        pool = WorkerPool(
+            worker_count=1, broker_config=broker_config, retry_policy=policy
+        )
+        await pool.initialize()
+
+        async def always_fails(topic, payload):
+            raise RetryableError("QoS ack timeout")
+
+        pool._workers[0].publish = always_fails
+
+        messages = [{"trxId": "tx-fail-artifact", "value": 99}]
+        # Should not raise at publish level
+        await pool.publish(messages, "test/topic")
+
+        # Artifact file should contain the failed message
+        from pathlib import Path
+        import json
+
+        assert Path(artifact_path).exists()
+        with open(artifact_path) as f:
+            lines = [line.strip() for line in f if line.strip()]
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
+        assert entry["trxId"] == "tx-fail-artifact"
