@@ -18,10 +18,16 @@ from loadgen.retry_policy import (
     BackoffStrategy,
 )
 from loadgen.publisher import Publisher, PublishInterruptError
-
-# Note: These modules will be implemented in subsequent plans
-# from loadgen.payload import PayloadFactory
-# from loadgen.slot_planner import SlotPlanner
+from loadgen.payload import PayloadFactory
+from loadgen.slot_planner import SlotPlanner
+from loadgen.config import (
+    load_config,
+    ScenarioConfig,
+    BrokerConfig,
+    MqttConfig,
+    PayloadConfig,
+    ConfigValidationError,
+)
 
 __all__ = [
     "load_meter_ids",
@@ -39,6 +45,12 @@ __all__ = [
     "BackoffStrategy",
     "Publisher",
     "PublishInterruptError",
-    # "PayloadFactory",  # To be implemented in plan 01-03
-    # "SlotPlanner",  # To be implemented in plan 01-04
+    "PayloadFactory",
+    "SlotPlanner",
+    "load_config",
+    "ScenarioConfig",
+    "BrokerConfig",
+    "MqttConfig",
+    "PayloadConfig",
+    "ConfigValidationError",
 ]
