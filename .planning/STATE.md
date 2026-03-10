@@ -24,7 +24,7 @@ progress:
 
 **Phase:** 02-publishing-engine (EXECUTING)
 **Plan:** 02-02 (Worker Pool) - COMPLETE, ready for 02-03
-**Status:** Plan 02-00 complete, 02-01 complete, 02-02 complete, ready for 02-03
+**Status:** Plan 02-00 complete, 02-01 complete, 02-02 complete, 02-03 complete, 02-04 complete
 **Progress:** [███████░░░] 70%
 
 ```
@@ -38,8 +38,8 @@ progress:
 ✓ 02-00: Test Infrastructure (Wave 0) - 38 TODO test stubs
 ✓ 02-01: MQTT Client (Wave 1) - PUB-01, PUB-02
 ✓ 02-02: Worker Pool (Wave 1) - PUB-03
-○ 02-03: Rate Limiter (Wave 2) - PUB-04
-○ 02-04: Retry Policy (Wave 2) - PUB-05
+✓ 02-03: Rate Limiter (Wave 2) - PUB-04
+✓ 02-04: Retry Policy (Wave 2) - PUB-05
 ○ 02-05: Publisher Orchestrator (Wave 3)
 ```
 
@@ -66,6 +66,7 @@ progress:
 | Mar 10 | asyncio.gather instead of TaskGroup in WorkerPool | TaskGroup requires Python 3.11+, project targets 3.9 |
 | Mar 10 | Individual publish failures non-fatal in WorkerPool | Log warning and continue, keep other workers running |
 | Mar 10 | Placeholder MQTTClient in worker_pool.py | Standalone testability; real client wired in orchestrator |
+| Mar 10 | Skip aiofiles for artifact writes in retry policy | Sync I/O acceptable for error path writes (not performance-critical) |
 
 ## Pending Todos
 
@@ -81,10 +82,10 @@ None identified.
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T23:55:36Z
-**Status:** Plan 02-02 complete — WorkerPool with pre-connect fail-fast and asyncio.gather concurrent publish. 13 tests passing. Ready for 02-03 (Rate Limiter).
+**Last session:** 2026-03-10T00:10:00Z
+**Status:** Plan 02-04 complete — RetryPolicy with exponential backoff, artifact writing, and WorkerPool integration. 32 tests passing (13 retry + 19 worker pool). Ready for 02-05 (Publisher Orchestrator).
 
-**Stopped at:** Completed 02-02-PLAN.md (Worker Pool)
+**Stopped at:** Completed 02-04-PLAN.md (Retry Policy)
 
 **Resume file:** .planning/phases/02-publishing-engine/02-CONTEXT.md
 
