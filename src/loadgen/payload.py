@@ -34,16 +34,17 @@ class PayloadFactory:
         >>> print(payload["operationResult"]["samplingTime"])  # ISO 8601 timestamp
     """
 
-    def __init__(self, dcu_id: str = "DCU-001"):
+    def __init__(self, dcu_id: str = "DCU-001", base_time: Optional[datetime] = None):
         """Initialize the payload factory.
 
         Args:
             dcu_id: The DCU ID to use in generated payloads. Defaults to "DCU-001".
+            base_time: Optional base time for sampling_time calculation. Defaults to current UTC time.
 
         """
         self.dcu_id = dcu_id
         self._seen_pairs: set[tuple[str, str]] = set()  # Track (meterId, samplingTime)
-        self._slot_planner = SlotPlanner()  # For timestamp generation
+        self._slot_planner = SlotPlanner(base_time=base_time)  # For timestamp generation
         self._slot_counter: int = 0  # Per-meter slot tracking
 
     def generate_payload(self, meter_id: str, slot_index: int = 0) -> dict:

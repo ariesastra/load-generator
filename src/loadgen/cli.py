@@ -68,21 +68,25 @@ async def _run_publisher(
     verbose: bool
 ) -> Dict[str, Any]:
     """Initialize and run Publisher with configuration."""
+    # Parse base_time from config
+    base_time = config.payload.get_base_time_datetime()
+
     publisher = Publisher(
         broker_config={
             "host": config.broker.host,
             "port": config.broker.port,
-            "tls": config.broker.tls,
+            "tls_enabled": config.broker.tls,
             "username": config.broker.username,
             "password": config.broker.password,
         },
         worker_count=config.worker_count,
         message_count=config.message_count,
         rate_limit=config.rate_limit,
-        qos=config.qos,
+        qos=config.mqtt.qos,
+        meter_ids=meter_ids,
         dcu_id=config.payload.dcu_id,
-        meter_ids_csv=config.payload.meter_id_source,
         topic=config.mqtt.topic,
+        base_time=base_time,
     )
     return await publisher.run()
 

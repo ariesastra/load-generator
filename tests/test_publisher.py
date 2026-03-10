@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 import asyncio
 import json
 from pathlib import Path
+from datetime import datetime, timezone
 
 
 @pytest.fixture
@@ -214,3 +215,93 @@ async def test_publisher_run_returns_statistics(
 
     # Verify cleanup called after publish
     mock_worker_pool.cleanup.assert_called_once()
+
+
+class TestBaseTime:
+    """Tests for base_time parameter in Publisher."""
+
+    @pytest.mark.asyncio
+    async def test_publisher_with_custom_base_time(self, publisher_config, mock_worker_pool):
+        """Test that Publisher accepts and stores base_time parameter."""
+        from loadgen.publisher import Publisher
+
+        base_time = datetime(2026, 3, 11, 0, 0, 0, tzinfo=timezone.utc)
+
+        pub = Publisher(
+            broker_config=publisher_config["broker_config"],
+            worker_count=publisher_config["worker_count"],
+            message_count=publisher_config["message_count"],
+            base_time=base_time,
+        )
+
+        # Verify base_time is stored
+        assert pub._base_time == base_time
+
+    @pytest.mark.asyncio
+    async def test_publisher_without_base_time(self, publisher_config, mock_worker_pool):
+        """Test that Publisher works without base_time (backward compatible)."""
+        from loadgen.publisher import Publisher
+
+        pub = Publisher(
+            broker_config=publisher_config["broker_config"],
+            worker_count=publisher_config["worker_count"],
+            message_count=publisher_config["message_count"],
+        )
+
+        # Verify base_time defaults to None
+        assert pub._base_time is None
+
+    @pytest.mark.asyncio
+    async def test_base_time_passed_to_payload_factory(self, publisher_config):
+        """Test that base_time is passed to PayloadFactory."""
+        from loadgen.publisher import Publisher
+        from datetime import datetime, timezone
+
+        base_time = datetime(2026, 3, 11, 0, 0, 0, tzinfo=timezone.utc)
+
+        with patch("loadgen.publisher.PayloadFactory", autospec=True) as mock_factory:
+            pub = Publisher(
+                broker_config=publisher_config["broker_config"],
+                worker_count=publisher_config["worker_count"],
+                message_count=publisher_config["message_count"],
+                base_time=base_time,
+            )
+
+            # Verify PayloadFactory was called with base_time
+            mock_factory.assert_called_once()
+            call_kwargs = mock_factory.call_args.kwargs
+            assert "base_time" in call_kwargs
+            assert call_kwargs["base_time"] == base_time
+
+    @pytest.mark.asyncio
+    async def test_generated_payloads_use_custom_base_time(self, publisher_config, mock_worker_pool):
+        """Test that generated payloads use custom base_time for sampling_time."""
+        from loadgen.publisher import Publisher
+        from datetime import datetime, timezone
+
+        base_time = datetime(2026, 3, 11, 0, 0, 0, tzinfo=timezone.utc)
+
+        pub = Publisher(
+            broker_config=publisher_config["broker_config"],
+            worker_count=publisher_config["worker_count"],
+            message_count=publisher_config["message_count"],
+            meter_ids=["000000000001"],
+            base_time=base_time,
+        )
+
+        # Generate payloads
+        messages = await pub._generate_payloads()
+
+        # Verify payloads were generated
+        assert len(messages) == publisher_config["message_count"]
+
+        # Verify sampling_time uses custom base_time
+        # First payload should have sampling_time at base_time (slot 0)
+        first_payload = messages[0]
+        sampling_time = first_payload["operationResult"]["samplingTime"]
+        assert sampling_time == "2026-03-11T00:00:00Z"
+
+        # Second payload should be 15 minutes later (slot 1)
+        second_payload = messages[1]
+        sampling_time = second_payload["operationResult"]["samplingTime"]
+        assert sampling_time == "2026-03-11T00:15:00Z"

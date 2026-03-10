@@ -19,12 +19,14 @@ import json
 import signal
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
 
 import structlog
 
-from loadgen.worker_pool import WorkerPool, MQTTClient
+from loadgen.worker_pool import WorkerPool
+from loadgen.mqtt_client import MQTTClient
 from loadgen.rate_limiter import TokenBucketRateLimiter
 from loadgen.retry_policy import (
     RetryPolicy,
@@ -63,7 +65,11 @@ class Publisher:
         retry_config: Optional[Dict[str, Any]] = None,
         artifact_dir: Optional[Union[str, Path]] = None,
         meter_ids_csv: Optional[Union[str, Path]] = None,
+        meter_ids: Optional[List[str]] = None,
+        dcu_id: str = "DCU-001",
         topic: str = "meter/loadProfile",
+        qos: int = 1,
+        base_time: Optional[datetime] = None,
     ):
         """
         Initialize Publisher orchestrator.
@@ -76,7 +82,11 @@ class Publisher:
             retry_config: Retry policy configuration
             artifact_dir: Directory for writing artifacts
             meter_ids_csv: Path to CSV with meter IDs (default: Asset-Meter.csv)
+            meter_ids: List of meter IDs (required)
+            dcu_id: Data Concentrator Unit ID (default: "DCU-001")
             topic: MQTT topic to publish to (default: "meter/loadProfile")
+            qos: MQTT QoS level (default: 1)
+            base_time: Optional base time for sampling_time calculation (default: current UTC)
         """
         self.broker_config = broker_config
         self.worker_count = worker_count
@@ -86,6 +96,8 @@ class Publisher:
         self.artifact_dir = Path(artifact_dir) if artifact_dir else None
         self.meter_ids_csv = Path(meter_ids_csv) if meter_ids_csv else None
         self.topic = topic
+        self.qos = qos
+        self._base_time = base_time
         self._interrupted = False
 
         # Initialize components
@@ -111,16 +123,16 @@ class Publisher:
 
         self._worker_pool = WorkerPool(
             worker_count=worker_count,
-            broker_config=broker_config,
+            broker_config={**broker_config, "qos": qos},
             retry_policy=retry_policy,
             rate_limiter=rate_limiter,
         )
 
         # Initialize payload factory
-        self._payload_factory = PayloadFactory()
+        self._payload_factory = PayloadFactory(dcu_id=dcu_id, base_time=base_time)
 
-        # Initialize meter IDs (load lazy or use sample)
-        self._meter_ids: List[str] = []
+        # Initialize meter IDs (use provided list, or empty for lazy loading/fallback)
+        self._meter_ids: List[str] = meter_ids if meter_ids else []
 
         # Track interrupt count for double Ctrl+C handling
         self._interrupt_count = 0
@@ -201,25 +213,31 @@ class Publisher:
         logger.info("Publishing complete", stats=stats)
         return stats
 
-    async def _generate_payloads(self) -> List[bytes]:
+    async def _generate_payloads(self) -> List[Dict[str, Any]]:
         """
         Generate payloads for publishing.
 
-        For Phase 2, we'll use sample meter IDs. Full CSV loading comes in Phase 3.
-
         Returns:
-            List of payload bytes
+            List of payload dictionaries
+
+        Raises:
+            ValueError: If no meter IDs were loaded from CSV
         """
-        # Load meter IDs (sample for now)
+        # Validate that meter IDs were loaded from CSV
         if not self._meter_ids:
-            self._meter_ids = ["123456789000", "123456789001"]
+            raise ValueError(
+                "No meter IDs loaded from CSV. Please check that: "
+                "1) The CSV file path is correct, "
+                "2) The meter_id column exists"
+            )
 
         messages = []
-        slot_index = 0
+        slot_indices = {meter_id: 0 for meter_id in self._meter_ids}
 
         # Generate payloads round-robin across meter IDs
         for i in range(self.message_count):
             meter_id = self._meter_ids[i % len(self._meter_ids)]
+            slot_index = slot_indices[meter_id]
 
             # Generate payload using factory
             payload = self._payload_factory.generate_payload(
@@ -227,7 +245,7 @@ class Publisher:
             )
 
             messages.append(payload)
-            slot_index += 1
+            slot_indices[meter_id] = slot_index + 1
 
         return messages
 
