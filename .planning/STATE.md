@@ -82,7 +82,9 @@ progress:
 
 ## Pending Todos
 
-None.
+1. **Add custom date for sampling_time in YAML scenario** — Enable custom base_time parameter in scenario YAML for historical/testing data simulation
+   - File: `.planning/todos/pending/2026-03-10-add-custom-date-for-sampling-time-in-yaml-scenario.md`
+   - Area: general
 
 ## Blockers/Concerns
 
