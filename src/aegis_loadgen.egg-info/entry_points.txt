@@ -1,0 +1,2 @@
+[console_scripts]
+loadgen = loadgen.cli:cli
