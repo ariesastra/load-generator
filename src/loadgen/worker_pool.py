@@ -21,46 +21,7 @@ from typing import List, Dict, Any, Optional, Union
 
 from loadgen.retry_policy import RetryPolicy, RetryableError, NonRetryableError, MaxRetriesExceededError
 from loadgen.rate_limiter import TokenBucketRateLimiter
-
-# Placeholder for MQTTClient - will be implemented in 02-01
-# For now, we'll use a placeholder that the tests will mock
-class MQTTClient:
-    """
-    Placeholder for MQTTClient.
-
-    This is a placeholder that will be replaced by the actual MQTTClient
-    implementation from plan 02-01. The tests will mock this class.
-    """
-
-    def __init__(
-        self,
-        host: str,
-        port: int,
-        qos: int,
-        tls_enabled: bool = False,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-    ):
-        self.host = host
-        self.port = port
-        self.qos = qos
-        self.tls_enabled = tls_enabled
-        self.username = username
-        self.password = password
-        self._connected = False
-
-    async def connect(self) -> None:
-        """Connect to MQTT broker."""
-        self._connected = True
-
-    async def disconnect(self) -> None:
-        """Disconnect from MQTT broker."""
-        self._connected = False
-
-    async def publish(self, topic: str, payload: Union[bytes, str]) -> None:
-        """Publish message to MQTT broker."""
-        if not self._connected:
-            raise Exception("Not connected")
+from loadgen.mqtt_client import MQTTClient
 
 
 # Custom exceptions
@@ -223,7 +184,7 @@ class WorkerPool:
         self._initialized = False
         self._logger.info("worker_pool_cleaned_up")
 
-    async def publish(self, messages: List[Dict[str, Any]], topic: str) -> None:
+    async def publish(self, messages: List[Dict[str, Any]], topic: str) -> Dict[str, int]:
         """
         Dispatch messages across workers concurrently using round-robin.
 
@@ -236,6 +197,9 @@ class WorkerPool:
         Args:
             messages: List of message dictionaries to publish
             topic: MQTT topic to publish to
+
+        Returns:
+            Dict with 'sent' and 'failed' counts
 
         Raises:
             RuntimeError: If WorkerPool has not been initialized
@@ -255,13 +219,20 @@ class WorkerPool:
             task = self._worker_publish_task(worker, topic, message)
             tasks.append(task)
 
-        # Execute all tasks concurrently
+        # Execute all tasks concurrently and collect results
+        results = []
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Count successes and failures
+        sent = sum(1 for r in results if r is True)
+        failed = sum(1 for r in results if r is False)
+
+        return {"sent": sent, "failed": failed}
 
     async def _worker_publish_task(
         self, worker: MQTTClient, topic: str, message: Dict[str, Any]
-    ) -> None:
+    ) -> bool:
         """
         Publish a single message using the given worker.
 
@@ -274,6 +245,9 @@ class WorkerPool:
             worker: The MQTTClient worker to use for publishing
             topic: MQTT topic to publish to
             message: Message dictionary to publish
+
+        Returns:
+            True if publish succeeded, False otherwise
         """
         try:
             # Acquire rate limit token before publishing (if rate limiter configured)
@@ -291,6 +265,8 @@ class WorkerPool:
             else:
                 await _do_publish()
 
+            return True
+
         except (MaxRetriesExceededError, NonRetryableError, Exception) as e:
             # Log failure but don't raise - other workers continue
             self._logger.warning(
@@ -300,6 +276,7 @@ class WorkerPool:
                 message_id=message.get("trxId", message.get("meterId", "unknown")),
                 error=str(e),
             )
+            return False
 
     @property
     def worker_count(self) -> int:

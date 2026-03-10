@@ -33,7 +33,7 @@ def load_meter_ids(csv_path: str) -> list[str]:
         csv_path: Path to the CSV file containing meter IDs
 
     Returns:
-        Sorted list of unique, valid meter IDs (12 characters each)
+        Sorted list of unique, valid meter IDs
 
     Raises:
         MeterIdValidationError: If meter_id column is not found in CSV
@@ -41,14 +41,14 @@ def load_meter_ids(csv_path: str) -> list[str]:
 
     Validation rules:
         - Meter ID must be non-empty after stripping whitespace
-        - Meter ID must be exactly 12 characters
+        - Meter ID can be any length (supports various meter ID formats)
         - Invalid rows are skipped silently (logged as warnings)
         - Duplicate meter IDs are removed (logged as info)
 
     Example:
         >>> meter_ids = load_meter_ids("Asset-Meter.csv")
         >>> print(meter_ids)
-        ['000000000049', '000000000050', '000000000051']
+        ['50610000056', '123456789012', 'ABC123456789']
     """
     csv_file_path = Path(csv_path)
 
@@ -104,15 +104,6 @@ def load_meter_ids(csv_path: str) -> list[str]:
             # Skip if empty
             if not meter_id:
                 logger.debug(f"Row {row_num}: meter_id is empty")
-                skipped_count += 1
-                continue
-
-            # Validate length (must be 12 characters)
-            if len(meter_id) != 12:
-                logger.debug(
-                    f"Row {row_num}: meter_id '{meter_id}' has invalid length "
-                    f"(got {len(meter_id)}, expected 12)"
-                )
                 skipped_count += 1
                 continue
 
