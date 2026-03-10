@@ -19,6 +19,8 @@ import json
 import structlog
 from typing import List, Dict, Any, Optional, Union
 
+from loadgen.retry_policy import RetryPolicy, RetryableError, NonRetryableError, MaxRetriesExceededError
+
 # Placeholder for MQTTClient - will be implemented in 02-01
 # For now, we'll use a placeholder that the tests will mock
 class MQTTClient:
@@ -88,7 +90,12 @@ class WorkerPool:
         await pool.cleanup()  # Disconnect all workers
     """
 
-    def __init__(self, worker_count: int, broker_config: Dict[str, Any]):
+    def __init__(
+        self,
+        worker_count: int,
+        broker_config: Dict[str, Any],
+        retry_policy: Optional[RetryPolicy] = None,
+    ):
         """
         Initialize WorkerPool with N workers.
 
@@ -101,6 +108,8 @@ class WorkerPool:
                 - tls_enabled: Whether to use TLS (default False)
                 - username: Optional username for authentication
                 - password: Optional password for authentication
+            retry_policy: Optional RetryPolicy for handling transient publish
+                          failures. If None, no retries are performed.
 
         Raises:
             ValueError: If worker_count is less than 1
@@ -110,6 +119,7 @@ class WorkerPool:
 
         self._worker_count = worker_count
         self._broker_config = broker_config
+        self._retry_policy = retry_policy
         self._workers: List[MQTTClient] = []
         self._initialized = False
         self._logger = structlog.get_logger()
@@ -248,7 +258,9 @@ class WorkerPool:
         Publish a single message using the given worker.
 
         This private method wraps worker.publish() with error handling and logging.
-        Individual failures are logged but don't propagate to stop other workers.
+        If a retry_policy is configured, publish calls are wrapped in it so that
+        transient QoS failures are retried with backoff. Individual failures are
+        logged but don't propagate to stop other workers.
 
         Args:
             worker: The MQTTClient worker to use for publishing
@@ -258,8 +270,16 @@ class WorkerPool:
         try:
             # Serialize message to JSON (using stdlib json for now)
             payload = json.dumps(message).encode("utf-8")
-            await worker.publish(topic, payload)
-        except Exception as e:
+
+            async def _do_publish() -> None:
+                await worker.publish(topic, payload)
+
+            if self._retry_policy is not None:
+                await self._retry_policy.retry(_do_publish, payload=message)
+            else:
+                await _do_publish()
+
+        except (MaxRetriesExceededError, NonRetryableError, Exception) as e:
             # Log failure but don't raise - other workers continue
             self._logger.warning(
                 "worker_publish_failed",
