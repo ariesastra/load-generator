@@ -14,9 +14,10 @@ broker:
   # password: null
 
 mqtt:
-  topic: meter/loadProfile
+  topic: meter-load-profile-periodic
   qos: 1
 
 payload:
   dcu_id: DCU-001
   meter_id_source: Asset-Meter.csv
+  base_time: "2026-03-11T00:00:00Z"
