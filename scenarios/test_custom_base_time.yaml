@@ -1,0 +1,20 @@
+name: "Custom Base Time Test"
+description: "Test scenario with custom base_time for historical data simulation"
+
+message_count: 10
+worker_count: 2
+rate_limit: 100
+qos: 1
+
+broker:
+  host: localhost
+  port: 1883
+  tls: false
+
+mqtt:
+  topic: meter/loadProfile
+  qos: 1
+
+payload:
+  dcu_id: DCU-TEST
+  base_time: "2026-03-11T00:00:00Z"
