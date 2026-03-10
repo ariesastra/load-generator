@@ -9,6 +9,7 @@ payload templates, and scenario parameters without code changes.
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
+from datetime import datetime, timezone
 
 import yaml
 
@@ -99,10 +100,12 @@ class PayloadConfig:
     Attributes:
         dcu_id: Data Concentrator Unit ID (default: "DCU-001")
         meter_id_source: Path to CSV file containing meter IDs
+        base_time: Optional base time for sampling_time calculation (ISO 8601 string)
     """
 
     dcu_id: str = "DCU-001"
     meter_id_source: Optional[str] = None
+    base_time: Optional[str] = None
 
     def __post_init__(self):
         """Validate payload configuration after initialization."""
@@ -119,6 +122,52 @@ class PayloadConfig:
                 raise ConfigValidationError(
                     f"Meter ID source file not found: {self.meter_id_source}"
                 )
+
+        # Validate base_time if provided
+        if self.base_time is not None:
+            if not isinstance(self.base_time, str):
+                raise ConfigValidationError(
+                    f"Invalid base_time: {self.base_time} - must be a string"
+                )
+            # Try to parse it to validate ISO 8601 format
+            try:
+                self.get_base_time_datetime()
+            except ValueError as e:
+                raise ConfigValidationError(
+                    f"Invalid base_time format: {e}"
+                )
+
+    def get_base_time_datetime(self) -> Optional[datetime]:
+        """
+        Convert base_time string to datetime object.
+
+        Returns:
+            datetime object in UTC if base_time is set, None otherwise
+
+        Raises:
+            ValueError: If base_time is not a valid ISO 8601 string
+        """
+        if self.base_time is None:
+            return None
+
+        # Handle 'Z' suffix (UTC indicator) for fromisoformat
+        iso_string = self.base_time
+        if iso_string.endswith('Z'):
+            iso_string = iso_string[:-1] + '+00:00'
+
+        try:
+            dt = datetime.fromisoformat(iso_string)
+            # Convert to UTC if timezone-aware
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc)
+            else:
+                # Assume UTC if no timezone specified
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except ValueError as e:
+            raise ValueError(
+                f"base_time must be a valid ISO 8601 datetime string (e.g., '2026-03-11T00:00:00Z'): {self.base_time}"
+            )
 
 
 @dataclass
@@ -271,6 +320,7 @@ def load_config(config_path: Union[str, Path]) -> ScenarioConfig:
         payload_config = PayloadConfig(
             dcu_id=payload_data.get("dcu_id", "DCU-001"),
             meter_id_source=payload_data.get("meter_id_source"),
+            base_time=payload_data.get("base_time"),
         )
 
         # Create scenario config

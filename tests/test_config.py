@@ -7,7 +7,7 @@ including validation of all fields and error handling.
 
 import pytest
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from loadgen.config import (
     load_config,
@@ -385,3 +385,168 @@ class TestFileErrors:
             load_config(config_yaml)
 
         assert "empty" in str(exc_info.value).lower()
+
+
+class TestBaseTime:
+    """Tests for base_time field in PayloadConfig."""
+
+    def test_payload_config_with_base_time(self, tmp_path, sample_csv_file):
+        """Test that PayloadConfig accepts valid ISO 8601 base_time string."""
+        config_yaml = tmp_path / "base_time_config.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+  base_time: "2026-03-11T00:00:00Z"
+"""
+        config_yaml.write_text(config_content)
+
+        config = load_config(config_yaml)
+
+        assert config.payload.base_time == "2026-03-11T00:00:00Z"
+
+    def test_payload_config_without_base_time(self, tmp_path, sample_csv_file):
+        """Test that PayloadConfig accepts None for base_time (backward compatible)."""
+        config_yaml = tmp_path / "no_base_time_config.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+"""
+        config_yaml.write_text(config_content)
+
+        config = load_config(config_yaml)
+
+        assert config.payload.base_time is None
+
+    def test_payload_config_invalid_base_time_format(self, tmp_path, sample_csv_file):
+        """Test that invalid base_time format raises ConfigValidationError."""
+        config_yaml = tmp_path / "invalid_base_time.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+  base_time: "not-a-datetime"
+"""
+        config_yaml.write_text(config_content)
+
+        with pytest.raises(ConfigValidationError) as exc_info:
+            load_config(config_yaml)
+
+        assert "Invalid base_time format" in str(exc_info.value)
+
+    def test_payload_config_invalid_base_time_type(self, tmp_path, sample_csv_file):
+        """Test that non-string base_time raises ConfigValidationError."""
+        config_yaml = tmp_path / "invalid_base_time_type.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+  base_time: 12345
+"""
+        config_yaml.write_text(config_content)
+
+        with pytest.raises(ConfigValidationError) as exc_info:
+            load_config(config_yaml)
+
+        assert "Invalid base_time" in str(exc_info.value)
+        assert "must be a string" in str(exc_info.value)
+
+    def test_get_base_time_datetime_with_z_suffix(self, tmp_path, sample_csv_file):
+        """Test that get_base_time_datetime() handles 'Z' suffix correctly."""
+        config_yaml = tmp_path / "z_suffix_config.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+  base_time: "2026-03-11T00:00:00Z"
+"""
+        config_yaml.write_text(config_content)
+
+        config = load_config(config_yaml)
+
+        dt = config.payload.get_base_time_datetime()
+        assert dt is not None
+        assert dt.year == 2026
+        assert dt.month == 3
+        assert dt.day == 11
+        assert dt.hour == 0
+        assert dt.minute == 0
+        assert dt.second == 0
+        assert dt.tzinfo == timezone.utc
+
+    def test_get_base_time_datetime_with_offset(self, tmp_path, sample_csv_file):
+        """Test that get_base_time_datetime() handles timezone offset correctly."""
+        config_yaml = tmp_path / "offset_config.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+  base_time: "2026-03-11T00:00:00+05:00"
+"""
+        config_yaml.write_text(config_content)
+
+        config = load_config(config_yaml)
+
+        dt = config.payload.get_base_time_datetime()
+        assert dt is not None
+        # Should be converted to UTC
+        assert dt.hour == 19  # 00:00 +05:00 = 19:00 UTC (previous day)
+        assert dt.day == 10  # Previous day due to timezone conversion
+        assert dt.tzinfo == timezone.utc
+
+    def test_get_base_time_datetime_none(self, tmp_path, sample_csv_file):
+        """Test that get_base_time_datetime() returns None when base_time is None."""
+        config_yaml = tmp_path / "none_base_time.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+"""
+        config_yaml.write_text(config_content)
+
+        config = load_config(config_yaml)
+
+        dt = config.payload.get_base_time_datetime()
+        assert dt is None
+
+    def test_payload_config_with_base_time_no_timezone(self, tmp_path, sample_csv_file):
+        """Test that base_time without timezone defaults to UTC."""
+        config_yaml = tmp_path / "no_tz_config.yaml"
+        config_content = f"""name: test_scenario
+message_count: 1000
+rate_limit: 100
+
+payload:
+  dcu_id: DCU-999
+  meter_id_source: {sample_csv_file}
+  base_time: "2026-03-11T00:00:00"
+"""
+        config_yaml.write_text(config_content)
+
+        config = load_config(config_yaml)
+
+        dt = config.payload.get_base_time_datetime()
+        assert dt is not None
+        assert dt.tzinfo == timezone.utc  # Should default to UTC
