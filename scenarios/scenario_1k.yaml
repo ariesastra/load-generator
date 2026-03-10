@@ -1,0 +1,22 @@
+name: "1k Message Benchmark"
+description: "Small-scale test with 1,000 messages to validate basic functionality"
+
+message_count: 1000
+worker_count: 2
+rate_limit: 100  # 100 msg/sec = 10 seconds for 1k messages
+qos: 1
+
+broker:
+  host: localhost
+  port: 1883
+  tls: false
+  # username: null  # Optional: uncomment if broker requires auth
+  # password: null
+
+mqtt:
+  topic: meter/loadProfile
+  qos: 1
+
+payload:
+  dcu_id: DCU-001
+  meter_id_source: Asset-Meter.csv
