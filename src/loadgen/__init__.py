@@ -17,6 +17,7 @@ from loadgen.retry_policy import (
     MaxRetriesExceededError,
     BackoffStrategy,
 )
+from loadgen.publisher import Publisher, PublishInterruptError
 
 # Note: These modules will be implemented in subsequent plans
 # from loadgen.payload import PayloadFactory
@@ -36,6 +37,8 @@ __all__ = [
     "NonRetryableError",
     "MaxRetriesExceededError",
     "BackoffStrategy",
+    "Publisher",
+    "PublishInterruptError",
     # "PayloadFactory",  # To be implemented in plan 01-03
     # "SlotPlanner",  # To be implemented in plan 01-04
 ]
