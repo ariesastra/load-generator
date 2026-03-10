@@ -28,6 +28,7 @@ from loadgen.config import (
     PayloadConfig,
     ConfigValidationError,
 )
+from loadgen.cli import cli
 
 __all__ = [
     "load_meter_ids",
@@ -53,4 +54,9 @@ __all__ = [
     "MqttConfig",
     "PayloadConfig",
     "ConfigValidationError",
+    "cli",
 ]
+
+
+if __name__ == "__main__":
+    cli()
