@@ -170,31 +170,11 @@ class Publisher:
                 logger.warning(
                     "Skipping publish (already interrupted)"
                 )
+                # Still need to cleanup
+                await self._worker_pool.cleanup()
 
         except KeyboardInterrupt:
-            # Increment interrupt count for double Ctrl+C detection
-            current_time = time.time()
-            if current_time - self._last_interrupt_time < 2.0:  # Within 2 seconds
-                self._interrupt_count += 1
-            else:
-                self._interrupt_count = 1
-
-            self._last_interrupt_time = current_time
-
-            logger.info("Keyboard interrupt detected", count=self._interrupt_count)
-            self._interrupted = True
-
-            # On second interrupt within grace period, force quit
-            if self._interrupt_count >= 2:
-                logger.error("Double Ctrl+C detected - force quit")
-                print("\nForce quit - skipping cleanup")
-                sys.exit(1)
-
-            # Graceful shutdown
-            await self._shutdown(stats=stats, start_time=start_time)
-            raise PublishInterruptError(
-                f"Publishing interrupted after {stats.get('sent', 0)} messages"
-            )
+            await self._handle_interrupt(stats=stats, start_time=start_time)
 
         except Exception as e:
             logger.error("Unexpected error during publish", error=str(e))
@@ -243,6 +223,32 @@ class Publisher:
             slot_index += 1
 
         return messages
+
+    async def _handle_interrupt(self, stats: Dict[str, Any], start_time: float) -> None:
+        """Handle KeyboardInterrupt with support for double Ctrl+C force quit."""
+        # Increment interrupt count for double Ctrl+C detection
+        current_time = time.time()
+        if current_time - self._last_interrupt_time < 2.0:  # Within 2 seconds
+            self._interrupt_count += 1
+        else:
+            self._interrupt_count = 1
+
+        self._last_interrupt_time = current_time
+
+        logger.info("Keyboard interrupt detected", count=self._interrupt_count)
+        self._interrupted = True
+
+        # On second interrupt within grace period, force quit
+        if self._interrupt_count >= 2:
+            logger.error("Double Ctrl+C detected - force quit")
+            print("\nForce quit - skipping cleanup")
+            sys.exit(1)
+
+        # Graceful shutdown
+        await self._shutdown(stats=stats, start_time=start_time)
+        raise PublishInterruptError(
+            f"Publishing interrupted after {stats.get('sent', 0)} messages"
+        )
 
     async def _shutdown(self, stats: Dict[str, Any], start_time: float) -> None:
         """
