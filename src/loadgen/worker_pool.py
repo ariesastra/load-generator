@@ -20,6 +20,7 @@ import structlog
 from typing import List, Dict, Any, Optional, Union
 
 from loadgen.retry_policy import RetryPolicy, RetryableError, NonRetryableError, MaxRetriesExceededError
+from loadgen.rate_limiter import TokenBucketRateLimiter
 
 # Placeholder for MQTTClient - will be implemented in 02-01
 # For now, we'll use a placeholder that the tests will mock
@@ -95,6 +96,7 @@ class WorkerPool:
         worker_count: int,
         broker_config: Dict[str, Any],
         retry_policy: Optional[RetryPolicy] = None,
+        rate_limiter: Optional[TokenBucketRateLimiter] = None,
     ):
         """
         Initialize WorkerPool with N workers.
@@ -110,6 +112,9 @@ class WorkerPool:
                 - password: Optional password for authentication
             retry_policy: Optional RetryPolicy for handling transient publish
                           failures. If None, no retries are performed.
+            rate_limiter: Optional TokenBucketRateLimiter for global publish
+                          rate throttling across all workers. If None, no rate
+                          limiting is applied.
 
         Raises:
             ValueError: If worker_count is less than 1
@@ -120,6 +125,7 @@ class WorkerPool:
         self._worker_count = worker_count
         self._broker_config = broker_config
         self._retry_policy = retry_policy
+        self._rate_limiter = rate_limiter
         self._workers: List[MQTTClient] = []
         self._initialized = False
         self._logger = structlog.get_logger()
@@ -222,8 +228,10 @@ class WorkerPool:
         Dispatch messages across workers concurrently using round-robin.
 
         This method distributes messages across workers in a round-robin fashion
-        and publishes them concurrently using asyncio.gather. Individual publish
-        failures are logged but don't stop other workers from publishing.
+        and publishes them concurrently using asyncio.gather. Each publish call
+        acquires a token from the rate limiter (if configured) to enforce global
+        throttling. Individual publish failures are logged but don't stop other
+        workers from publishing.
 
         Args:
             messages: List of message dictionaries to publish
@@ -268,6 +276,10 @@ class WorkerPool:
             message: Message dictionary to publish
         """
         try:
+            # Acquire rate limit token before publishing (if rate limiter configured)
+            if self._rate_limiter is not None:
+                await self._rate_limiter.acquire()
+
             # Serialize message to JSON (using stdlib json for now)
             payload = json.dumps(message).encode("utf-8")
 

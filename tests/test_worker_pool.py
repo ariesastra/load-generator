@@ -482,6 +482,130 @@ class TestWorkerPoolPublish:
         assert elapsed < 0.02  # Allow some margin
 
 
+# ─── Task 2: Rate Limiter integration ────────────────────────────────────────
+
+
+class TestWorkerPoolRateLimiter:
+    """Test WorkerPool integration with RateLimiter."""
+
+    @pytest.mark.asyncio
+    async def test_workerpool_accepts_optional_rate_limiter(self, broker_config):
+        """
+        Test WorkerPool accepts optional rate_limiter parameter.
+
+        Given: WorkerPool class
+        When: Initialized with a rate_limiter
+        Then: Rate limiter stored and accessible
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.rate_limiter import TokenBucketRateLimiter
+
+        rate_limiter = TokenBucketRateLimiter(rate_limit=100)
+        pool = WorkerPool(
+            worker_count=2, broker_config=broker_config, rate_limiter=rate_limiter
+        )
+        assert pool._rate_limiter is rate_limiter
+
+    @pytest.mark.asyncio
+    async def test_workerpool_without_rate_limiter_works_normally(self, broker_config):
+        """
+        Test WorkerPool works normally without rate_limiter (default None).
+
+        Given: WorkerPool without rate_limiter
+        When: Initialized and used
+        Then: rate_limiter is None and pool functions normally
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        pool = WorkerPool(worker_count=2, broker_config=broker_config)
+        assert pool._rate_limiter is None
+
+    @pytest.mark.asyncio
+    async def test_publish_calls_rate_limiter_acquire_for_each_message(
+        self, broker_config
+    ):
+        """
+        Test publish() calls rate_limiter.acquire() for each message.
+
+        Given: WorkerPool with rate_limiter
+        When: publish() is called with messages
+        Then: rate_limiter.acquire() called once per message
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.rate_limiter import TokenBucketRateLimiter
+
+        rate_limiter = TokenBucketRateLimiter(rate_limit=100)
+        rate_limiter.acquire = AsyncMock(return_value=None)
+
+        pool = WorkerPool(
+            worker_count=2, broker_config=broker_config, rate_limiter=rate_limiter
+        )
+        await pool.initialize()
+
+        messages = [
+            {"trxId": "tx-001", "value": 1},
+            {"trxId": "tx-002", "value": 2},
+        ]
+        topic = "test/topic"
+
+        await pool.publish(messages, topic)
+
+        # acquire should be called once per message
+        assert rate_limiter.acquire.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_shared_across_all_workers(self, broker_config):
+        """
+        Test rate limiter is shared across all workers (global throttling).
+
+        Given: WorkerPool with rate_limiter and multiple workers
+        When: publish() is called
+        Then: Rate limiter is called for each message (shared global limit)
+        """
+        from loadgen.worker_pool import WorkerPool
+        from loadgen.rate_limiter import TokenBucketRateLimiter
+
+        rate_limiter = TokenBucketRateLimiter(rate_limit=10)
+        acquire_calls = []
+
+        async def tracking_acquire():
+            acquire_calls.append(1)
+            await asyncio.sleep(0)  # Yield
+
+        rate_limiter.acquire = tracking_acquire
+
+        pool = WorkerPool(
+            worker_count=3, broker_config=broker_config, rate_limiter=rate_limiter
+        )
+        await pool.initialize()
+
+        # Publish 10 messages across 3 workers
+        messages = [{"trxId": f"tx-{i}", "value": i} for i in range(10)]
+        await pool.publish(messages, "test/topic")
+
+        # Rate limiter should be called 10 times (once per message)
+        assert len(acquire_calls) == 10
+
+    @pytest.mark.asyncio
+    async def test_publish_without_rate_limiter_works_normally(self, broker_config):
+        """
+        Test publish() works normally without rate limiter.
+
+        Given: WorkerPool without rate_limiter
+        When: publish() is called
+        Then: Works normally without calling acquire
+        """
+        from loadgen.worker_pool import WorkerPool
+
+        pool = WorkerPool(worker_count=2, broker_config=broker_config)
+        await pool.initialize()
+
+        messages = [{"trxId": "tx-nolimit", "value": 99}]
+        # Should not raise - no rate limiting
+        await pool.publish(messages, "test/topic")
+        # Success means it worked without rate limiter
+
+
 # ─── Task 3: Retry Policy integration ────────────────────────────────────────
 
 
