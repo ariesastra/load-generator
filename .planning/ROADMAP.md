@@ -79,7 +79,7 @@
 
 **Plans:** 3 plans
 
-- [ ] 03-01-PLAN.md — Configuration schema and YAML loader (CONFIG-01, CONFIG-02, CONFIG-03)
+- [x] 03-01-PLAN.md — Configuration schema and YAML loader (CONFIG-02, CONFIG-03)
 - [ ] 03-02-PLAN.md — Click-based CLI with run command (MEAS-03)
 - [ ] 03-03-PLAN.md — Example scenario files (1k, 5k, 10k) (CONFIG-01)
 
@@ -107,7 +107,7 @@
 |-------|----------------|--------|-----------|
 | 1. Input Foundation | 4/4 | Complete | 2026-03-09 |
 | 2. Publishing Engine | 6/6 | Complete | 2026-03-10 |
-| 3. Configuration & CLI | 0/3 | Planning | - |
+| 3. Configuration & CLI | 1/3 | In Progress | 2026-03-11 |
 | 4. Metrics & Artifacts | 0/2 | Not started | - |
 
 ## Dependencies
@@ -136,8 +136,8 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 | PUB-04 | Phase 2 | Complete |
 | PUB-05 | Phase 2 | Complete |
 | CONFIG-01 | Phase 3 | Pending |
-| CONFIG-02 | Phase 3 | Pending |
-| CONFIG-03 | Phase 3 | Pending |
+| CONFIG-02 | Phase 3 | Complete |
+| CONFIG-03 | Phase 3 | Complete |
 | MEAS-01 | Phase 4 | Pending |
 | MEAS-02 | Phase 4 | Pending |
 | MEAS-03 | Phase 3 | Pending |
@@ -147,4 +147,4 @@ Phase 3 and Phase 4 can execute in parallel once Phase 2 is complete.
 
 ---
 *Roadmap created: 2026-03-09*
-*Last updated: 2026-03-11 (Phase 3 planned)*
+*Last updated: 2026-03-11 (Phase 3 Plan 01 complete)*

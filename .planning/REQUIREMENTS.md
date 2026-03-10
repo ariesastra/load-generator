@@ -31,8 +31,8 @@ Requirements for v1.0 Core milestone. Each maps to roadmap phases.
 ### Configuration
 
 - [ ] **CONFIG-01**: User can configure scenario for 1k, 5k, 10k event runs
-- [ ] **CONFIG-02**: User can configure MQTT topic
-- [ ] **CONFIG-03**: User can configure payload template
+- [x] **CONFIG-02**: User can configure MQTT topic
+- [x] **CONFIG-03**: User can configure payload template
 
 ## v2 Requirements
 
