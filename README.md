@@ -23,6 +23,7 @@ pip install -e ".[dev]"
 loadgen run --scenario scenarios/scenario_1k.yaml
 
 # Or using Python module
+cd src/
 python3 -m loadgen run --scenario scenarios/scenario_1k.yaml
 
 # Dry run (no actual messages sent)

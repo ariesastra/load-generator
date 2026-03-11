@@ -3,7 +3,7 @@ description: "Small-scale test with 1,000 messages to validate basic functionali
 
 message_count: 96
 worker_count: 2
-rate_limit: 100  # 100 msg/sec = 10 seconds for 1k messages
+rate_limit: 1000  # 100 msg/sec = 10 seconds for 1k messages
 qos: 1
 
 broker:
@@ -20,4 +20,4 @@ mqtt:
 payload:
   dcu_id: DCUX001
   meter_id_source: ../Complete-Asset-Meter.csv
-  base_time: "2026-03-11T00:00:00Z"
+  base_time: "2026-03-09T00:00:00Z"
